@@ -20,7 +20,7 @@ const container: React.CSSProperties = {
   height: 150,
 };
 
-const DESIRED_FONT_SIZE = 120;
+const DESIRED_FONT_SIZE = 80;
 const HIGHLIGHT_COLOR = "#39E508";
 
 export const Page: React.FC<{

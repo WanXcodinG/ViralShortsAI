@@ -1,35 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AbsoluteFill,
-  CalculateMetadataFunction,
   cancelRender,
   continueRender,
   delayRender,
-  getStaticFiles,
-  OffthreadVideo,
   Sequence,
   useVideoConfig,
-  watchStaticFile,
+  useCurrentFrame,
+  OffthreadVideo,
+  staticFile,
 } from "remotion";
+import { loadFont } from "../load-font";
 import { z } from "zod";
 import SubtitlePage from "./SubtitlePage";
 import { getVideoMetadata } from "@remotion/media-utils";
-import { loadFont } from "../load-font";
 import { NoCaptionFile } from "./NoCaptionFile";
 import { Caption, createTikTokStyleCaptions } from "@remotion/captions";
 
-export type SubtitleProp = {
-  startInSeconds: number;
-  text: string;
-};
+export interface CaptionedVideoProps {
+  src: string;
+}
 
 export const captionedVideoSchema = z.object({
   src: z.string(),
 });
 
-export const calculateCaptionedVideoMetadata: CalculateMetadataFunction<
-  z.infer<typeof captionedVideoSchema>
-> = async ({ props }) => {
+export const calculateCaptionedVideoMetadata = async ({ props }: { props: CaptionedVideoProps }) => {
   const fps = 30;
   const metadata = await getVideoMetadata(props.src);
 
@@ -39,38 +35,24 @@ export const calculateCaptionedVideoMetadata: CalculateMetadataFunction<
   };
 };
 
-const getFileExists = (file: string) => {
-  const files = getStaticFiles();
-  const fileExists = files.find((f) => {
-    return f.src === file;
-  });
-  return Boolean(fileExists);
-};
-
-// How many captions should be displayed at a time?
-// Try out:
-// - 1500 to display a lot of words at a time
-// - 200 to only display 1 word at a time
 const SWITCH_CAPTIONS_EVERY_MS = 1200;
 
-export const CaptionedVideo: React.FC<{
-  src: string;
-}> = ({ src }) => {
+export const CaptionedVideo: React.FC<{ src: string }> = ({ src }) => {
   const [subtitles, setSubtitles] = useState<Caption[]>([]);
+  const [zoomEffects, setZoomEffects] = useState<
+    { timestampMs: number; zoomEffect: boolean; zoomLevel: number }[]
+  >([]);
   const [handle] = useState(() => delayRender());
   const { fps } = useVideoConfig();
+  const frame = useCurrentFrame();
 
-  const subtitlesFile = src
-    .replace(/.mp4$/, ".json")
-    .replace(/.mkv$/, ".json")
-    .replace(/.mov$/, ".json")
-    .replace(/.webm$/, ".json");
+  const subtitlesFile = src.replace(/\.\w+$/, ".json");
 
   const fetchSubtitles = useCallback(async () => {
     try {
-      await loadFont();
       const res = await fetch(subtitlesFile);
-      const data = (await res.json()) as Caption[];
+      const data = await res.json();
+      loadFont();
       setSubtitles(data);
       continueRender(handle);
     } catch (e) {
@@ -78,17 +60,20 @@ export const CaptionedVideo: React.FC<{
     }
   }, [handle, subtitlesFile]);
 
+  const fetchZoomEffects = useCallback(async () => {
+    try {
+      const res = await fetch(staticFile("zoom_effects.json"));
+      const data = await res.json();
+      setZoomEffects(data.effects);
+    } catch (e) {
+      console.error("Failed to load zoom effects:", e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSubtitles();
-
-    const c = watchStaticFile(subtitlesFile, () => {
-      fetchSubtitles();
-    });
-
-    return () => {
-      c.cancel();
-    };
-  }, [fetchSubtitles, src, subtitlesFile]);
+    fetchZoomEffects();
+  }, [fetchSubtitles, fetchZoomEffects]);
 
   const { pages } = useMemo(() => {
     return createTikTokStyleCaptions({
@@ -97,9 +82,40 @@ export const CaptionedVideo: React.FC<{
     });
   }, [subtitles]);
 
+  // Convert current frame to timestamp in milliseconds
+  const currentTimestampMs = useMemo(() => {
+    return (frame / fps) * 1000;
+  }, [frame, fps]);
+
+  // Determine the current zoom level based on the current timestamp
+  const currentZoom = useMemo(() => {
+    if (!zoomEffects || zoomEffects.length === 0) {
+      console.warn("No zoom effects found.");
+      return 1; // Default zoom level for no effects
+    }
+
+    // Find the latest zoom effect where timestampMs <= currentTimestampMs
+    const activeZoom = zoomEffects
+      .filter((effect) => effect.zoomEffect && effect.timestampMs <= currentTimestampMs)
+      .sort((a, b) => b.timestampMs - a.timestampMs)[0];
+
+    if (activeZoom) {
+      console.log("Active Zoom Effect Found:", activeZoom);
+      return activeZoom.zoomLevel;
+    }
+
+    // If no active zoom effect is found, return default zoom level
+    return 1;
+  }, [currentTimestampMs, zoomEffects]);
+
   return (
-    <AbsoluteFill style={{ backgroundColor: "white" }}>
-      <AbsoluteFill>
+    <AbsoluteFill style={{ backgroundColor: "black" }}>
+      {/* Video Container with Zoom Effect */}
+      <AbsoluteFill
+        style={{
+          transform: `scale(${currentZoom})`,
+        }}
+      >
         <OffthreadVideo
           style={{
             objectFit: "cover",
@@ -107,14 +123,17 @@ export const CaptionedVideo: React.FC<{
           src={src}
         />
       </AbsoluteFill>
+
+      {/* Render Captions */}
       {pages.map((page, index) => {
         const nextPage = pages[index + 1] ?? null;
         const subtitleStartFrame = (page.startMs / 1000) * fps;
         const subtitleEndFrame = Math.min(
           nextPage ? (nextPage.startMs / 1000) * fps : Infinity,
-          subtitleStartFrame + SWITCH_CAPTIONS_EVERY_MS,
+          subtitleStartFrame + SWITCH_CAPTIONS_EVERY_MS
         );
         const durationInFrames = subtitleEndFrame - subtitleStartFrame;
+
         if (durationInFrames <= 0) {
           return null;
         }
@@ -125,11 +144,13 @@ export const CaptionedVideo: React.FC<{
             from={subtitleStartFrame}
             durationInFrames={durationInFrames}
           >
-            <SubtitlePage key={index} page={page} />;
+            <SubtitlePage key={index} page={page} />
           </Sequence>
         );
       })}
-      {getFileExists(subtitlesFile) ? null : <NoCaptionFile />}
+
+      {/* No Captions Fallback */}
+      {!subtitles.length && <NoCaptionFile />}
     </AbsoluteFill>
   );
 };
