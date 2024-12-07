@@ -4,3 +4,7 @@ pillow==9.0.1
 openai
 pydantic
 python-dotenv
+markdown2
+streamlit
+elevenlabs
+opencv-python

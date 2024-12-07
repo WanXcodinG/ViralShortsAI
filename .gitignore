@@ -8,3 +8,7 @@ out
 whisper.cpp
 /public
 /temp
+/modules/__pycache__
+/js-scripts/public
+/media
+/modules/models

@@ -32,7 +32,7 @@ const extractToTempAudioFile = (fileToTranscribe, tempOutFile) => {
 const subFile = async (filePath, fileName, folder) => {
   const outPath = path.join(
     process.cwd(),
-    "public",
+    "media",
     folder,
     fileName.replace(".wav", ".json"),
   );
@@ -92,7 +92,7 @@ const processVideo = async (fullPath, entry, directory) => {
   await subFile(
     tempOutFilePath,
     tempWavFileName,
-    path.relative("public", directory),
+    path.relative("media", directory),
   );
   if (shouldRemoveTempDirectory) {
     rmSync(path.join(process.cwd(), "temp"), { recursive: true });
@@ -121,7 +121,7 @@ await downloadWhisperModel({ folder: WHISPER_PATH, model: WHISPER_MODEL });
 const hasArgs = process.argv.length > 2;
 
 if (!hasArgs) {
-  await processDirectory(path.join(process.cwd(), "public"));
+  await processDirectory(path.join(process.cwd(), "media"));
   process.exit(0);
 }
 
