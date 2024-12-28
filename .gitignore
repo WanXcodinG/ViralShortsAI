@@ -12,3 +12,5 @@ whisper.cpp
 /js-scripts/public
 /media
 /modules/models
+
+js-scripts/build

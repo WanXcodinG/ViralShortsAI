@@ -8,6 +8,9 @@ from modules.silence import detect_silence
 from modules.sub import process_video
 import streamlit as st
 import subprocess
+import os
+
+from modules.zoomer import add_zoom_effects_from_json
 
 def render_remotion_video():
     try:
@@ -16,6 +19,30 @@ def render_remotion_video():
     except subprocess.CalledProcessError as e:
         print(f"An error occurred: {e.stderr}")
 
+def process_with_node(directory_or_file):
+    """
+    Run the sub.mjs file using Node.js with the provided directory or file as input.
+
+    Args:
+        directory_or_file (str): The path to the video file or directory to process.
+    """
+    node_script_path = os.path.join(os.getcwd(), "sub.mjs")
+
+    if not os.path.exists(node_script_path):
+        raise FileNotFoundError(f"Node.js script not found at {node_script_path}")
+
+    try:
+        # Call the Node.js script
+        subprocess.run(
+            ["node", node_script_path],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        print(f"Successfully processed: {directory_or_file}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error occurred while processing {directory_or_file}:\n{e.stderr}")
 
 def process_videos(media_dir: Path, output_dir: Path, broll_suggestions, voiceover_path: Path):
     video_files = list((media_dir / "videos").glob("*.mp4"))
@@ -36,13 +63,13 @@ def process_videos(media_dir: Path, output_dir: Path, broll_suggestions, voiceov
         transcript_path = Path.cwd() / "media" / "subs" / f"trimmed_{video_file.stem}.json"
 
         # Add captions
-        process_video(trimmed_path)
+        process_with_node(Path.cwd() / "media" / "videos")
         # Create zoom effects
         zoom_effects_path = output_dir / "zoom_effects.json"
         # Integrate transcript JSON created by sub.mjs or another step.
         # Assume transcript_path points to a JSON transcript used by create_zoom_effects
         create_zoom_effects(str(transcript_path), str(zoom_effects_path))
-
+        add_zoom_effects_from_json(str(trimmed_path), str(zoom_effects_path), str(trimmed_path))
         # Insert B-roll
         current_broll = []
         for suggestion in broll_suggestions:
@@ -63,7 +90,6 @@ def process_videos(media_dir: Path, output_dir: Path, broll_suggestions, voiceov
        # final_clip = main_clip.set_audio(voiceover)
         final_output_path = output_dir / 'final_video.mp4'
         main_clip.write_videofile(str(final_output_path.stem) + ".mp4", codec='libx264', audio_codec='aac')
-        render_remotion_video()
         return final_output_path
     else:
         raise Exception("No final videos produced.")

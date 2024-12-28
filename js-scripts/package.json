@@ -7,9 +7,11 @@
   "private": true,
   "dependencies": {
     "@remotion/animation-utils": "4.0.235",
+    "@remotion/bundler": "^4.0.236",
     "@remotion/cli": "4.0.235",
     "@remotion/layout-utils": "4.0.235",
     "@remotion/media-utils": "4.0.235",
+    "@remotion/renderer": "^4.0.236",
     "@remotion/tailwind": "4.0.235",
     "@remotion/zod-types": "4.0.235",
     "react": "18.3.1",

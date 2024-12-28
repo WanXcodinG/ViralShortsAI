@@ -5,7 +5,7 @@ import streamlit as st
 def detect_silence(
     transcript_file: Path,
     silence_file: Path,
-    silence_threshold: int = 2000,   # 2000ms
+    silence_threshold: int = 1100,   # 2000ms
     confidence_threshold: float = 0.2
 ):
     """

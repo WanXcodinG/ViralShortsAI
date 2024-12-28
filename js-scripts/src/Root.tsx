@@ -13,12 +13,12 @@ export const RemotionRoot: React.FC = () => {
       id="CaptionedVideo"
       component={CaptionedVideo}
       schema={captionedVideoSchema}
-      width={1080}
-      height={1920}
+      width={Math.floor(1080 / 2) * 2}
+      height={Math.floor(1920 / 2) * 2}
       fps={30}
       durationInFrames={1800}
       defaultProps={{
-        src: staticFile("pawesome-closing-trimmed.mp4"),
+        src: staticFile("final_rant.mp4"),
       }}
     />
   );

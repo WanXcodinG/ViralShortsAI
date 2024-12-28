@@ -27,12 +27,19 @@ export const captionedVideoSchema = z.object({
 
 export const calculateCaptionedVideoMetadata = async ({ props }: { props: CaptionedVideoProps }) => {
   const fps = 30;
-  const metadata = await getVideoMetadata(props.src);
-
-  return {
-    fps,
-    durationInFrames: Math.floor(metadata.durationInSeconds * fps),
-  };
+  try {
+    const metadata = await getVideoMetadata(props.src);
+    if (!metadata || !metadata.durationInSeconds) {
+      throw new Error("Invalid video metadata");
+    }
+    return {
+      fps,
+      durationInFrames: Math.floor(metadata.durationInSeconds * fps),
+    };
+  } catch (e) {
+    console.error("Error fetching video metadata:", e);
+    return { fps, durationInFrames: 0 }; // Default to zero frames to prevent crashes
+  }
 };
 
 const SWITCH_CAPTIONS_EVERY_MS = 1200;
@@ -43,19 +50,34 @@ export const CaptionedVideo: React.FC<{ src: string }> = ({ src }) => {
     { timestampMs: number; zoomEffect: boolean; zoomLevel: number }[]
   >([]);
   const [handle] = useState(() => delayRender());
-  const { fps } = useVideoConfig();
+  const { width, height, fps } = useVideoConfig();
   const frame = useCurrentFrame();
 
   const subtitlesFile = src.replace(/\.\w+$/, ".json");
 
+  // Validate video dimensions
+  useEffect(() => {
+    if (!width || !height) {
+      console.error("Invalid video dimensions:", { width, height });
+      throw new Error("Invalid video dimensions.");
+    }
+    if (width % 2 !== 0 || height % 2 !== 0) {
+      console.warn("Dimensions are not divisible by 2:", { width, height });
+    }
+  }, [width, height]);
+
   const fetchSubtitles = useCallback(async () => {
     try {
       const res = await fetch(subtitlesFile);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch subtitles: ${res.statusText}`);
+      }
       const data = await res.json();
       loadFont();
       setSubtitles(data);
       continueRender(handle);
     } catch (e) {
+      console.error("Subtitles fetch error:", e);
       cancelRender(e);
     }
   }, [handle, subtitlesFile]);
@@ -63,10 +85,13 @@ export const CaptionedVideo: React.FC<{ src: string }> = ({ src }) => {
   const fetchZoomEffects = useCallback(async () => {
     try {
       const res = await fetch(staticFile("zoom_effects.json"));
+      if (!res.ok) {
+        throw new Error(`Failed to fetch zoom effects: ${res.statusText}`);
+      }
       const data = await res.json();
       setZoomEffects(data.effects);
     } catch (e) {
-      console.error("Failed to load zoom effects:", e);
+      console.error("Zoom effects fetch error:", e);
     }
   }, []);
 
@@ -76,36 +101,31 @@ export const CaptionedVideo: React.FC<{ src: string }> = ({ src }) => {
   }, [fetchSubtitles, fetchZoomEffects]);
 
   const { pages } = useMemo(() => {
+    if (!subtitles || subtitles.length === 0) {
+      console.warn("No subtitles found.");
+      return { pages: [] }; // Fallback if no subtitles are found
+    }
     return createTikTokStyleCaptions({
       combineTokensWithinMilliseconds: SWITCH_CAPTIONS_EVERY_MS,
-      captions: subtitles ?? [],
+      captions: subtitles,
     });
   }, [subtitles]);
 
-  // Convert current frame to timestamp in milliseconds
   const currentTimestampMs = useMemo(() => {
     return (frame / fps) * 1000;
   }, [frame, fps]);
 
-  // Determine the current zoom level based on the current timestamp
   const currentZoom = useMemo(() => {
     if (!zoomEffects || zoomEffects.length === 0) {
       console.warn("No zoom effects found.");
       return 1; // Default zoom level for no effects
     }
 
-    // Find the latest zoom effect where timestampMs <= currentTimestampMs
     const activeZoom = zoomEffects
       .filter((effect) => effect.zoomEffect && effect.timestampMs <= currentTimestampMs)
       .sort((a, b) => b.timestampMs - a.timestampMs)[0];
 
-    if (activeZoom) {
-      console.log("Active Zoom Effect Found:", activeZoom);
-      return activeZoom.zoomLevel;
-    }
-
-    // If no active zoom effect is found, return default zoom level
-    return 1;
+    return activeZoom ? activeZoom.zoomLevel : 1; // Default zoom level
   }, [currentTimestampMs, zoomEffects]);
 
   return (
@@ -140,11 +160,11 @@ export const CaptionedVideo: React.FC<{ src: string }> = ({ src }) => {
 
         return (
           <Sequence
-            key={index}
+            key={`${subtitleStartFrame}-${index}`} // Ensure unique keys
             from={subtitleStartFrame}
             durationInFrames={durationInFrames}
           >
-            <SubtitlePage key={index} page={page} />
+            <SubtitlePage page={page} />
           </Sequence>
         );
       })}
