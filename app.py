@@ -1,6 +1,9 @@
 import streamlit as st
 from pathlib import Path
-import shutil 
+import shutil
+import subprocess
+import os
+import atexit
 import openai
 from modules.config import get_openai_api_key, get_elevenlabs_api_key
 from modules.directory_reader import gather_media_files
@@ -9,14 +12,51 @@ from modules.broll_suggester import suggest_broll
 from modules.voiceover_generator import generate_voiceover
 from modules.video_processor import process_videos
 
-import shutil  # Import shutil for file moving
+# Path to the sub_v1.mjs script
+SUB_SCRIPT_PATH = "/Users/andreas/Desktop/ViralShortAI/viralshortai/js-scripts/sub_v1.mjs"
+NODE_EXECUTABLE = "node"  # Ensure Node.js is installed and accessible
+
+# Subprocess handle for managing sub_v1.mjs
+subprocess_handle = None
+
+def start_sub_v1_script():
+    """Start the sub_v1.mjs script as a subprocess."""
+    global subprocess_handle
+    if not subprocess_handle:
+        subprocess_handle = subprocess.Popen(
+            [NODE_EXECUTABLE, SUB_SCRIPT_PATH],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        st.write("sub_v1.mjs started.")
+
+def stop_sub_v1_script():
+    """Stop the sub_v1.mjs subprocess."""
+    global subprocess_handle
+    if subprocess_handle:
+        subprocess_handle.terminate()
+        try:
+            subprocess_handle.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            subprocess_handle.kill()  # Force kill if not terminated
+        st.write("sub_v1.mjs stopped.")
+        subprocess_handle = None
+
+# Ensure the script is stopped when the app exits
+atexit.register(stop_sub_v1_script)
 
 def main():
     st.title("Viral Short AI - Automated Video Generation")
-    
+
+    # Start the sub_v1.mjs script
+    start_sub_v1_script()
+
+    # Set up API keys
     openai.api_key = get_openai_api_key()
     eleven_api_key = get_elevenlabs_api_key()
 
+    # Define paths
     project_root = Path(__file__).parent
     media_dir = project_root / 'media'
     context_path = project_root / 'context' / 'marketing.md'
@@ -63,9 +103,6 @@ def main():
         st.success("Video moved successfully.")
     else:
         st.error(f"Generated video not found in project root: {root_video_path}")
-
-if __name__ == "__main__":
-    main()
 
 if __name__ == "__main__":
     main()

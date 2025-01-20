@@ -51,7 +51,7 @@ def process_videos(media_dir: Path, output_dir: Path, broll_suggestions, voiceov
     for video_file in video_files:
         # Run silence detection if needed
         silence_json_path = output_dir / "silence.json"
-        video_transcript_file = output_dir / f"{video_file.stem}.json"
+        video_transcript_file = media_dir / "videos" / f"{video_file.stem}.json"
         detect_silence(video_transcript_file, silence_json_path)
         st.write(f"Detected silence for {video_file.name}")
         # Remove silence

@@ -93,21 +93,32 @@ def analyze_media_files(
     transcript_dir: Path = Path("./transcripts"),
     cache_path: Path = Path("./media_cache.json")
 ) -> List[MediaItem]:
-    # Check if cache exists
+    """
+    Analyze media files, process only new files, and append results to the cached JSON.
+    """
+    # Load existing cache if available
     if cache_path.exists():
-        # Load cached results
         with open(cache_path, 'r') as f:
             cached_data = json.load(f)
-        # Convert cached dicts to MediaItem objects
         cached_items = [MediaItem(**item) for item in cached_data]
-        return cached_items
+        cached_filenames = {item.filename for item in cached_items}
+    else:
+        cached_items = []
+        cached_filenames = set()
 
-    analyzed = []
-    for f in media_files:
-        f = Path(f)
+    # Identify new files to process
+    new_files = [f for f in media_files if Path(f).name not in cached_filenames]
+
+    # Process new files
+    new_items = []
+    for f in new_files:
+        f = Path(f).resolve()
         mtype, _ = mimetypes.guess_type(f)
         if mtype is None:
-            media_type = "unknown"
+            if f.suffix.lower() in [".mp4", ".mov", ".mkv", ".webm", ".m4v"]:
+                media_type = "video"
+            else:
+                media_type = "unknown"
         elif "image" in mtype:
             media_type = "image"
         elif "video" in mtype:
@@ -124,51 +135,32 @@ def analyze_media_files(
             try:
                 frame_img = extract_frame(f)
                 image_data = encode_image(frame_img)
-                transcript_text = load_transcript_for_video(f, transcript_dir)
             except Exception as e:
-                print(f"Frame extraction or transcript loading failed for {f}: {e}")
+                print(f"Failed to extract frame from {f}: {e}")
                 image_data = None
+            transcript_text = load_transcript_for_video(f, transcript_dir)
 
-        # Prepare messages for structured output
-        # Remember: messages content must be a single string for each message.
-        # Convert all previously used structures into plain strings.
-        content_lines = []
-        content_lines.append(f"Marketing Context: {marketing_context}")
-        content_lines.append(f"File: {f.name}, Type: {media_type}")
+        content_lines = [
+            f"Marketing Context: {marketing_context[:1000]}...",
+            f"File: {f.name}, Type: {media_type}",
+        ]
         if transcript_text:
             content_lines.append(f"Transcript: {transcript_text}")
         if image_data:
             content_lines.append(f"Image: data:image/jpeg;base64,{image_data}")
-            content_lines.append("Analyze this media (and transcript if present) and return valid JSON.")
         else:
-            content_lines.append("No image available. Describe based on filename, marketing context, and transcript.")
-
+            content_lines.append("No image available.")
         user_message = "\n".join(content_lines)
 
-        # Create messages array as required by OpenAI API
-        # The prompt is the system message
         system_prompt = (
             "You are analyzing a media file in the context of a marketing project. "
-            "You will return a JSON describing filename, media_type, description, and relevance "
-            "based on the marketing context, visual content, and (if available) the transcript text. "
-            "The JSON structure should be:\n"
-            "{\n"
-            '  "filename": "string",\n'
-            '  "media_type": "string",\n'
-            '  "description": "string",\n'
-            '  "relevance": "string"\n'
-            "}\n"
-            "No extra text, only return valid JSON."
+            "You will return a JSON describing filename, media_type, description, and relevance. "
+            "No extra text, only valid JSON."
         )
-
-        messages = [
-            {"role": "user", "content": user_message},
-        ]
-
-        # Call structured output function
+        messages = [{"role": "user", "content": user_message}]
         item = generate_structured_output(system_prompt, MediaItem, messages)
         if item is None:
-            # Fallback item if parsing fails
+            print(f"OpenAI API failed to analyze {f.name}, using fallback.")
             item = MediaItem(
                 filename=f.name,
                 media_type=media_type,
@@ -176,10 +168,13 @@ def analyze_media_files(
                 relevance="unknown"
             )
 
-        analyzed.append(item)
+        new_items.append(item)
 
-    # Save results to cache
+    # Combine cached and new items
+    all_items = cached_items + new_items
+
+    # Save updated cache
     with open(cache_path, 'w') as f:
-        json.dump([item.dict() for item in analyzed], f, indent=2)
+        json.dump([item.dict() for item in all_items], f, indent=2)
 
-    return analyzed
+    return all_items

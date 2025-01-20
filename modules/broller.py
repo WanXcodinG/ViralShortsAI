@@ -71,6 +71,13 @@ def insert_broll(main_video_path: str, broll_paths: List[dict], output_path: str
         composite_clip = CompositeVideoClip(final_clips).set_audio(main_audio)
 
         # Write the final output video
-        composite_clip.write_videofile(str(output_path), codec="libx264", audio_codec="aac")
+        composite_clip.write_videofile(
+                str(output_path),
+                codec="libx264",
+                audio_codec="aac",
+                preset="ultrafast",  # Optional: faster encoding
+                threads=4,           # Optional: multi-threading
+                ffmpeg_params=["-vf", "scale=iw:-1"],  # Ensures correct scaling
+            )
     except Exception as e:
         st.write(f"Error inserting B-roll: {e}")

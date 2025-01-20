@@ -18,7 +18,7 @@ export const RemotionRoot: React.FC = () => {
       fps={30}
       durationInFrames={1800}
       defaultProps={{
-        src: staticFile("final_rant.mp4"),
+        src: staticFile("final_video.mp4"),
       }}
     />
   );

@@ -21,8 +21,12 @@ class ZoomEffects(BaseModel):
 
  
 def create_zoom_effects(transcript_path: str, output_path: str):
-    transcript_data = open(transcript_path, "r").read()
-
+    transcript_data = None
+    try:
+        transcript_data = open(transcript_path, "r").read()
+    except Exception as e: 
+        st.write(f"Error reading transcript file: {e}")
+        return
     prompt = (
         "You are an AI tool designed to optimize zoom effects for a viral TikTok video. "
         "You will receive a transcript in JSON format containing timestamps and dialogue from the video. "

@@ -8,12 +8,13 @@ import {
   readdirSync,
 } from "node:fs";
 import path from "path";
+import chokidar from "chokidar";
 import {
   WHISPER_LANG,
   WHISPER_MODEL,
   WHISPER_PATH,
   WHISPER_VERSION,
-} from "./js-scripts/whisper-config.mjs";
+} from "./whisper-config.mjs";
 import {
   downloadWhisperModel,
   installWhisperCpp,
@@ -21,20 +22,21 @@ import {
   toCaptions,
 } from "@remotion/install-whisper-cpp";
 
+const processedFiles = new Set(); // Keep track of processed files
+
 const extractToTempAudioFile = (fileToTranscribe, tempOutFile) => {
-  // Extracting audio from mp4 and save it as 16khz wav file
   execSync(
     `npx remotion ffmpeg -i ${fileToTranscribe} -ar 16000 ${tempOutFile} -y`,
-    { stdio: ["ignore", "inherit"] },
+    { stdio: ["ignore", "inherit"] }
   );
 };
 
 const subFile = async (filePath, fileName, folder) => {
   const outPath = path.join(
     process.cwd(),
-    "media",
+    "public",
     folder,
-    fileName.replace(".wav", ".json"),
+    fileName.replace(".wav", ".json")
   );
 
   const whisperCppOutput = await transcribe({
@@ -53,11 +55,15 @@ const subFile = async (filePath, fileName, folder) => {
   });
   writeFileSync(
     outPath.replace("webcam", "subs"),
-    JSON.stringify(captions, null, 2),
+    JSON.stringify(captions, null, 2)
   );
 };
 
 const processVideo = async (fullPath, entry, directory) => {
+  if (processedFiles.has(fullPath)) {
+    return; // Skip already processed files
+  }
+
   if (
     !fullPath.endsWith(".mp4") &&
     !fullPath.endsWith(".webm") &&
@@ -73,30 +79,33 @@ const processVideo = async (fullPath, entry, directory) => {
       .replace(/.mkv$/, ".json")
       .replace(/.mov$/, ".json")
       .replace(/.webm$/, ".json")
-      .replace("webcam", "subs"),
+      .replace("webcam", "subs")
   );
+
   if (isTranscribed) {
+    processedFiles.add(fullPath); // Mark as processed
     return;
   }
+
+  console.log("Processing file:", fullPath);
+
   let shouldRemoveTempDirectory = false;
   if (!existsSync(path.join(process.cwd(), "temp"))) {
     mkdirSync(`temp`);
     shouldRemoveTempDirectory = true;
   }
-  console.log("Extracting audio from file", entry);
 
   const tempWavFileName = entry.split(".")[0] + ".wav";
   const tempOutFilePath = path.join(process.cwd(), `temp/${tempWavFileName}`);
 
   extractToTempAudioFile(fullPath, tempOutFilePath);
-  await subFile(
-    tempOutFilePath,
-    tempWavFileName,
-    path.relative("media", directory),
-  );
+  await subFile(tempOutFilePath, tempWavFileName, path.relative("public", directory));
+
   if (shouldRemoveTempDirectory) {
     rmSync(path.join(process.cwd(), "temp"), { recursive: true });
   }
+
+  processedFiles.add(fullPath); // Mark as processed
 };
 
 const processDirectory = async (directory) => {
@@ -117,25 +126,41 @@ const processDirectory = async (directory) => {
 await installWhisperCpp({ to: WHISPER_PATH, version: WHISPER_VERSION });
 await downloadWhisperModel({ folder: WHISPER_PATH, model: WHISPER_MODEL });
 
-// Read arguments for filename if given else process all files in the directory
-const hasArgs = process.argv.length > 2;
+const watchDirectories = [
+  process.cwd(),
+  path.join(process.cwd(), "../media/videos"), // Include the media/videos directory
+];
 
-if (!hasArgs) {
-  await processDirectory(path.join(process.cwd(), "media"));
-  process.exit(0);
-}
+console.log(`Watching directories for changes: ${watchDirectories}`);
 
-for (const arg of process.argv.slice(2)) {
-  const fullPath = path.join(process.cwd(), arg);
-  const stat = lstatSync(fullPath);
+const watcher = chokidar.watch(watchDirectories, {
+  ignored: /(^|[\/\\])\../, // Ignore dotfiles
+  persistent: true,
+});
 
-  if (stat.isDirectory()) {
-    await processDirectory(fullPath);
-    continue;
+watcher.on("add", async (filePath) => {
+  try {
+    if (
+      filePath.endsWith(".mp4") ||
+      filePath.endsWith(".webm") ||
+      filePath.endsWith(".mkv") ||
+      filePath.endsWith(".mov")
+    ) {
+      console.log(`Detected new file: ${filePath}`);
+      const directory = path.dirname(filePath);
+      const fileName = path.basename(filePath);
+      await processVideo(filePath, fileName, directory);
+    }
+  } catch (error) {
+    console.error(`Error processing file ${filePath}:`, error);
   }
+});
 
-  console.log(`Processing file ${fullPath}`);
-  const directory = path.dirname(fullPath);
-  const fileName = path.basename(fullPath);
-  await processVideo(fullPath, fileName, directory);
+watcher.on("error", (error) => {
+  console.error(`Watcher error: ${error}`);
+});
+
+// Process all files in the directory initially
+for (const dir of watchDirectories) {
+  await processDirectory(dir);
 }

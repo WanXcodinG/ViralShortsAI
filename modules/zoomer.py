@@ -51,7 +51,14 @@ def add_zoom_effects_from_json(video_path, json_path, output_path):
         final_clip = CompositeVideoClip(clips)
 
         # Write the output video
-        final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+        final_clip.write_videofile(
+                output_path,
+                codec="libx264",
+                audio_codec="aac",
+                preset="ultrafast",  # Optional: faster encoding
+                threads=4,           # Optional: multi-threading
+                ffmpeg_params=["-vf", "scale=iw:-1"],  # Ensures correct scaling
+            )
         print(f"Zoom effects applied and saved to {output_path}")
     except Exception as e:
         print(f"An error occurred: {e}")

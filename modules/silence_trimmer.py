@@ -29,27 +29,28 @@ class SilenceTrimmer:
                 continue
 
             if silence["fromMs"] > last_end:
-                segments.append({
-                    "start": last_end / 1000,
-                    "end": silence["fromMs"] / 1000
-                })
-                print(f"Adding non-silent segment: start={last_end}, end={silence['fromMs']}")
+                start_time = last_end / 1000
+                end_time = silence["fromMs"] / 1000
+                if start_time < end_time:  # Ensure valid segment
+                    segments.append({
+                        "start": start_time,
+                        "end": end_time
+                    })
+                    print(f"Adding non-silent segment: start={start_time}, end={end_time}")
             last_end = silence["toMs"]
 
         if last_end < video_duration * 1000:
-            segments.append({
-                "start": last_end / 1000,
-                "end": video_duration  # Ensure end is within duration
-            })
-            print(f"Adding final non-silent segment: start={last_end}, end={video_duration}")
+            start_time = last_end / 1000
+            end_time = video_duration
+            if start_time < end_time:  # Ensure valid segment
+                segments.append({
+                    "start": start_time,
+                    "end": end_time
+                })
+                print(f"Adding final non-silent segment: start={start_time}, end={end_time}")
 
-        # Ensure segments are within bounds
-        for segment in segments:
-            segment["end"] = min(segment["end"], video_duration)
-        
         print(f"Calculated non-silent segments: {segments}")
         return segments
-
     def trim_video(self):
         try:
             # Load video
@@ -75,7 +76,7 @@ class SilenceTrimmer:
 
             # Extract and concatenate non-silent segments
             clips = [
-                video.subclip(seg["start"], min(seg["end"], video.duration))
+                video.subclip(seg["start"], min(seg["end"], video.duration)).resize(height=1920)
                 for seg in non_silent_segments
             ]
             if not clips:
@@ -86,7 +87,14 @@ class SilenceTrimmer:
             trimmed_video = concatenate_videoclips(clips, method="compose")
 
             # Write the output video
-            trimmed_video.write_videofile(self.output_path, codec="libx264", audio_codec="aac")
+            trimmed_video.write_videofile(
+                self.output_path,
+                codec="libx264",
+                audio_codec="aac",
+                preset="ultrafast",  # Optional: faster encoding
+                threads=4,           # Optional: multi-threading
+                ffmpeg_params=["-vf", "scale=iw:-1"],  # Ensures correct scaling
+            )
             st.write(f"Trimmed video saved to {self.output_path}")
 
         except Exception as e:

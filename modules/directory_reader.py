@@ -4,8 +4,20 @@
 from pathlib import Path
 
 def gather_media_files(media_dir: Path):
-    # Return a list of all media files in the media directory
-    # including images, videos, screen recordings, etc.
+    """
+    Gather all media files from the given directory, including images, videos, and JSON files.
+    """
+    # Define the extensions to include
+    allowed_extensions = ['mp4', 'mov', 'jpg', 'jpeg', 'png']
+    
+    # Check if the directory exists
     if not media_dir.exists():
         return []
-    return list(media_dir.glob('**/*.*'))  # Adjust pattern as needed
+    
+    # Gather files matching the allowed extensions (case-insensitive)
+    media_files = [
+        file for ext in allowed_extensions
+        for file in media_dir.rglob(f'*.{ext}')
+    ]
+    
+    return media_files
