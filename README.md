@@ -130,11 +130,11 @@ ELEVEN_LABS_API_KEY=your_elevenlabs_api_key
 OPENAI_ORGANIZATION=your_organization_id
 ```
 
-- **Marketing Context:**
+**Marketing Context:**
 
 The marketing copy and context for media analysis is located in context/marketing.md. Update this file as needed to tailor suggestions for your specific campaign.
 
-- **Whisper & Remotion Configuration:**
+**Whisper & Remotion Configuration:**
 
 Adjust js-scripts/whisper-config.mjs for your desired Whisper model and language settings. Similarly, modify remotion.config.ts if you need to change video output settings.
 
