@@ -1,6 +1,6 @@
 # **ViralShortsAI**
 
-**ViralShortsAI** is an end-to-end automated video generation pipeline designed to create engaging, TikTok-style viral short videos using AI. The project leverages computer vision, LLMs, and audio/video processing techniques to:
+**ViralShortsAI** is an end-to-end automated video generation pipeline designed to create engaging, TikTok-style viral short videos using AI. The project leverages LLMs and audio/video processing techniques to:
 
 - Analyze and enhance media assets using AI (via OpenAI and ElevenLabs).
 - Suggest and overlay B-roll to enrich the final video.
@@ -200,12 +200,13 @@ Final video outputs are saved to the js-scripts/public directory and can be prev
 - markdown2
 - elevenlabs
 - (and more as listed in requirements.txt)
-- N**ode.js Packages:**
+
+**Node.js Packages:**
 - remotion and related packages (see package.json in js-scripts)
 - chokidar (for file watching in captioning scripts)
 - Other dependencies as configured in the Node.js scripts.
 
-• **External Tools:**
+**External Tools:**
 
 - FFmpeg for media extraction and encoding.
 
