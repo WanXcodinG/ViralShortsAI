@@ -1,5 +1,7 @@
 # **ViralShortsAI**
 
+## This is still a work in progress!
+
 **ViralShortsAI** is an end-to-end automated video generation pipeline designed to create engaging, TikTok-style viral short videos using AI. The project leverages LLMs and audio/video processing techniques to:
 
 - Analyze and enhance media assets using AI (via OpenAI and ElevenLabs).
