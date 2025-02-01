@@ -29,16 +29,17 @@ def insert_broll(main_video_path: str, broll_paths: List[dict], output_path: str
             broll_path = broll_path.resolve()  # Get the absolute path
 
             if broll_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".bmp"]:  # Image file
-                # Resize the image using Pillow
-                with Image.open(broll_path) as img:
-                    # Calculate the new size while maintaining the aspect ratio
-                    new_width = 1024  # Example: Set a fixed width for resized images
-                    aspect_ratio = img.height / img.width
-                    new_height = int(new_width * aspect_ratio)
+                resized_image_path = broll_path.with_name(f"resized_{broll_path.name}")
 
-                    resized_image_path = broll_path.with_name(f"resized_{broll_path.name}")
-                    img = img.resize((new_width, new_height), Image.ANTIALIAS)
-                    img.save(resized_image_path)
+                if not resized_image_path.exists():  # Avoid reprocessing if resized image exists
+                    with Image.open(broll_path) as img:
+                        # Calculate new size while maintaining aspect ratio
+                        new_width = 1024
+                        aspect_ratio = img.height / img.width
+                        new_height = int(new_width * aspect_ratio)
+
+                        img = img.resize((new_width, new_height), Image.ANTIALIAS)
+                        img.save(resized_image_path)
 
                 # Use the resized image for the ImageClip
                 broll_clip = ImageClip(str(resized_image_path)).set_duration(broll.get("duration", image_duration))
