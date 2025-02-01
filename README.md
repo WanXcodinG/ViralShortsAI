@@ -117,7 +117,7 @@ npm install
 
 **Configuration**
 
-- **Environment Variables:**
+**Environment Variables:**
 
 Create a .env file at the root of the project to store your API keys and other sensitive configuration values:
 
