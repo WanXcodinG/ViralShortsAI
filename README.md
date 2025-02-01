@@ -11,7 +11,7 @@ This repository is ideal for creators and marketers who want to automate the pro
 
 **Features**
 
-• **Green Screen Overlay:**
+**Green Screen Overlay:**
 
 The ai_video.py script processes a video to detect a green screen area and overlays a separate screen recording with perspective correction.
 
@@ -117,7 +117,7 @@ npm install
 
 **Configuration**
 
-1. **Environment Variables:**
+- **Environment Variables:**
 
 Create a .env file at the root of the project to store your API keys and other sensitive configuration values:
 
@@ -128,11 +128,11 @@ ELEVEN_LABS_API_KEY=your_elevenlabs_api_key
 OPENAI_ORGANIZATION=your_organization_id
 ```
 
-1. **Marketing Context:**
+- **Marketing Context:**
 
 The marketing copy and context for media analysis is located in context/marketing.md. Update this file as needed to tailor suggestions for your specific campaign.
 
-1. **Whisper & Remotion Configuration:**
+- **Whisper & Remotion Configuration:**
 
 Adjust js-scripts/whisper-config.mjs for your desired Whisper model and language settings. Similarly, modify remotion.config.ts if you need to change video output settings.
 
