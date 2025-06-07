@@ -1,10 +1,24 @@
+# FastMCP framework
+fastmcp>=0.4.0
+
+# Video processing
+opencv-python>=4.8.0
 moviepy>=1.0.3
-python-ffmpeg>=2.0.0
-pillow==9.0.1
-openai
-pydantic
-python-dotenv
-markdown2
-streamlit
-elevenlabs
-opencv-python
+ffmpeg-python>=0.2.0
+
+# Image processing
+Pillow>=10.0.0
+
+# Audio processing
+elevenlabs>=0.2.0
+
+# Data models and validation
+pydantic>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Optional dependencies for enhanced functionality
+numpy>=1.24.0
+scipy>=1.10.0
