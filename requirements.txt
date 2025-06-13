@@ -1,6 +1,9 @@
 # FastMCP framework
 fastmcp>=0.4.0
 
+# Web framework
+streamlit>=1.28.0
+
 # Video processing
 opencv-python>=4.8.0
 moviepy>=1.0.3
